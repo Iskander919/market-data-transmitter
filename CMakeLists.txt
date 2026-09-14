@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 project (market_data_transmitter)
 
 add_executable(market_data_transmitter 
-    # main.cpp
-    examples/tcp_socket_example.cpp
+    main.cpp
+    # examples/tcp_socket_example.cpp
     sockets/sockets.cpp
     lock_free_queue/lock_free_queue.h
     md_protocol/md_protocol.cpp)
