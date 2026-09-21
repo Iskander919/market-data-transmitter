@@ -45,13 +45,13 @@ namespace exchange {
 
     struct marketDataTypeDef {
 
-        order_id  orderId;
-        ticker_id tickerId;
-        client_id clientId;
-        price     priceValue;
-        quantity  quant;
-        priority  priorityValue;
-        side      sideValue;
+        order_id  orderId        = ORDER_ID_INVALID;
+        ticker_id tickerId       = TICKER_ID_INVALID;
+        client_id clientId       = CLIENT_ID_INVALID;
+        price     priceValue     = PRICE_INVALID;
+        quantity  quant          = QUANTITY_INVALID;
+        priority  priorityValue  = PRIORITY_INVALID;
+        side      sideValue      = side::INVALID;
 
     };
 

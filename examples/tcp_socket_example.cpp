@@ -2,6 +2,7 @@
 #include <iostream>
 #include "logger.h"
 #include "sockets.h"
+#include "md_protocol.h"
 
 int main() {
 
@@ -31,11 +32,13 @@ int main() {
         false,
         logger);
 
-    char data[4] = {0x01, 0x02, 0x03, 0x32};
+    // char data[4] = {0x01, 0x02, 0x03, 0x32};
+    std::array<uint8_t, 4> data = {0x01, 0x02, 0x03, 0x32};
+    char *char_ptr = reinterpret_cast<char*>(data.data());
 
     while(1) {
 
-        ssize_t sendStatus = socket.udpSend(fd, data, 4, 9000, "127.0.0.1");
+        ssize_t sendStatus = socket.udpSend(fd, char_ptr, 4, 9000, "127.0.0.1");
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         std::cout << "Sent" << std::endl;
 

@@ -394,6 +394,7 @@ public:
     static std::string getCurrentTimeStr() {
 
         const time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        return "0";
     }
 
     Logger()                = delete;
