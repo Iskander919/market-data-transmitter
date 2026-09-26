@@ -2,6 +2,7 @@
 #include <iomanip>
 #include "sockets.h"
 #include "md_protocol.h"
+#include "matching_engine.h"
 
 std::ostream &operator << (std::ostream &ss, std::array<uint8_t, 
     exchange::marketDataStructSize> &arr) {

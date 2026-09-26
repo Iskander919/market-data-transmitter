@@ -6,7 +6,7 @@ project (market_data_transmitter)
 
 add_executable(market_data_transmitter 
     # main.cpp
-    examples/tcp_socket_example.cpp
+    examples/matching_engine.cpp
     sockets/sockets.cpp
     lock_free_queue/lock_free_queue.h
     market_data_publisher/md_protocol.cpp

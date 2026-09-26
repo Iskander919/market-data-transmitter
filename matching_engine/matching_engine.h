@@ -1,11 +1,14 @@
 #pragma once
 
 #include <atomic>
+#include <iostream>
 #include <thread>
+#include <chrono>
 
 #include "lock_free_queue.h"
 #include "md_protocol.h"
 #include "order_gateway.h"
+#include "logger.h"
 
 
 namespace exchange {
@@ -23,7 +26,10 @@ namespace exchange {
     class MatchingEngine {
     public:
 
-        explicit MatchingEngine(MarketUpdateLFQueue *marketUpdateLfQueue);
+        explicit MatchingEngine(exchange::MarketUpdateLFQueue *marketUpdateLfQueue, 
+                                exchange::ClientReqLFQueue *clientRequestLFQueue, 
+                                exchange::CLientResponseLFQueue *clientResponseLFQueue, 
+                                Logger *logger);
 
         ~MatchingEngine();
 
@@ -37,9 +43,20 @@ namespace exchange {
 
         MarketUpdateLFQueue *_marketUpdateLfQueue;
 
+        ClientReqLFQueue    *_clientReqLFQueue;
+
+        CLientResponseLFQueue *_clientResponseLFQueue;
+
         std::atomic<bool> _isRunning;
 
         std::thread _matchingEngineThread;
+
+        void processMarketData();
+
+        void processClientRequests();
+
+        // pointer to the Logger insatnce
+        Logger *_logger;
 
     };
 
