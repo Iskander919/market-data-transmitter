@@ -28,3 +28,10 @@ is represented by the followwing table:
   </tr>
 </table>
 
+# To do:
+1 Limit Order Book
+2 Order Gateway Server: TCP connection manager
+3 TLS
+4 Connect it all together
+5 Tests
+

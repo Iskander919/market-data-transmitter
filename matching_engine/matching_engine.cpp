@@ -26,6 +26,10 @@ exchange::MatchingEngine::MatchingEngine(exchange::MarketUpdateLFQueue *marketUp
         
         _logger -> log("Create instance of matching engine\n");
 
+        #if DEBUG_MODE
+        std::cout << "Created instance of matching engine" << std::endl;
+        #endif
+
 }
 
 /**
@@ -36,6 +40,10 @@ exchange::MatchingEngine::MatchingEngine(exchange::MarketUpdateLFQueue *marketUp
 exchange::MatchingEngine::~MatchingEngine() {
 
     _matchingEngineThread.join();
+
+    #if DEBUG_MODE
+    std::cout << "Destroyed ME instance" << std::endl;
+    #endif
 
 }
 
@@ -58,11 +66,19 @@ void exchange::MatchingEngine::start() {
 
     });
 
+    #if DEBUG_MODE
+    std::cout << "Started ME thread" << std::endl;
+    #endif
+
 }
 
 void exchange::MatchingEngine::stop() {
 
     _isRunning = false;
+
+    #if DEBUG_MODE
+    std::cout << "Stopped ME thread" << std::endl;
+    #endif
 
 }
 
@@ -71,8 +87,10 @@ void exchange::MatchingEngine::processMarketData() {
     while(_isRunning || _marketUpdateLfQueue -> size()) {
 
         // test boilerplate code
+        #if DEBUG_MODE
         std::cout << "Processing market data" << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        #endif
 
     } 
 

@@ -10,6 +10,8 @@
 #include "order_gateway.h"
 #include "logger.h"
 
+#define DEBUG_MODE 1
+
 
 namespace exchange {
 
@@ -17,7 +19,7 @@ namespace exchange {
     typedef LockFreeQueue<exchange::marketDataTypeDef> MarketUpdateLFQueue;
 
     // data that comes from order gateway
-    typedef LockFreeQueue<exchange::clientResponseTypeDef> ClientReqLFQueue;
+    typedef LockFreeQueue<exchange::clientRequestTypeDef> ClientReqLFQueue;
 
     // data that comes to order gateway
     typedef LockFreeQueue<exchange::clientResponseTypeDef> CLientResponseLFQueue;
