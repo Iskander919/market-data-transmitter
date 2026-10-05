@@ -4,7 +4,7 @@
 ## Market data protocol review
 Market data prtocol is a form of Simple Binary Protocol (SBE). It transmits 
 data from Exchnage side to Client side via UDP. The format of the protocol
-is represented by the followwing table:
+is represented by the following table:
 
 <!-- Первая часть: столбцы 1–5 -->
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; text-align: center; width: 100%; margin-bottom: 15px;">
@@ -29,9 +29,9 @@ is represented by the followwing table:
 </table>
 
 # To do:
-1 Limit Order Book
-2 Order Gateway Server: TCP connection manager
-3 TLS
-4 Connect it all together
-5 Tests
+1 Limit Order Book\
+2 Order Gateway Server: TCP connection manager\
+3 TLS\
+4 Connect it all together\
+5 Tests\
 
