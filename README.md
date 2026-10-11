@@ -33,5 +33,5 @@ is represented by the following table:
 2 Order Gateway Server: TCP connection manager\
 3 TLS\
 4 Connect it all together\
-5 Tests\
+5 Tests
 
