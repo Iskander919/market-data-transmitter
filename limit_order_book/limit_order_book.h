@@ -2,6 +2,7 @@
 #include "matching_engine.h"
 #include "logger.h"
 #include "mem_pool.h"
+#include "me_order_struct.h"
 
 namespace exchange {
 
@@ -31,7 +32,12 @@ namespace exchange {
 
     private:
 
-        
+        // Memory Pool where MEOrdersAtPrice are stored
+        // we have two separate sequences for bids and for asks
+        MemoryPool<MEOrdersAtPrice> ordersAtPricePool;
+
+        MEOrdersAtPrice *bidsByPrice = nullptr;
+        MEOrdersAtPrice *asksByPrice = nullptr;
 
     };
 

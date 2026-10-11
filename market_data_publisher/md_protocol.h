@@ -18,7 +18,7 @@ namespace exchange {
     // define maximum possible value of order_id
     constexpr uint64_t ORDER_ID_INVALID = std::numeric_limits<order_id>::max();
 
-    // 
+    // for example AAPL etc.
     typedef uint32_t ticker_id;
     constexpr ticker_id TICKER_ID_INVALID = std::numeric_limits<ticker_id>::max();
 
