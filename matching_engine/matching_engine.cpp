@@ -95,3 +95,5 @@ void exchange::MatchingEngine::processMarketData() {
     } 
 
 }
+
+void exchange::MatchingEngine::sendClientResponse(const clientResponseTypeDef &response) { }

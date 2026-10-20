@@ -19,6 +19,27 @@ namespace exchange {
 
         explicit clientResponseTypeDef();
 
+        explicit clientResponseTypeDef(
+            clientResponseTypeEnum _responseStatus,
+            client_id _clientId,
+            ticker_id _tickerId,
+            order_id _marketOrderId,
+            order_id _clientOrderId,
+            side _sideValue,
+            price _priceValue,
+            quantity _qty,
+            priority _prty) : 
+
+            responseStatus(_responseStatus),
+            clientId(_clientId),
+            tickerId(_tickerId),
+            marketOrderId(_marketOrderId),
+            clientOrderId(_clientOrderId),
+            sideValue(_sideValue),
+            priceValue(_priceValue),
+            qty(_qty),
+            prty(_prty) { }
+
         clientResponseTypeEnum responseStatus;
         client_id clientId;
         ticker_id tickerId;

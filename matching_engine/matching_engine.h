@@ -41,6 +41,8 @@ namespace exchange {
         // stops matching engine thread
         void stop();
 
+        void sendClientResponse(const clientResponseTypeDef &response);
+
     private:
 
         MarketUpdateLFQueue *_marketUpdateLfQueue;
