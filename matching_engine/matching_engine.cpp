@@ -15,6 +15,8 @@ exchange::MatchingEngine::MatchingEngine(exchange::MarketUpdateLFQueue *marketUp
     exchange::CLientResponseLFQueue *clientResponseLFQueue, 
     Logger *logger) : 
     _marketUpdateLfQueue(marketUpdateLfQueue), 
+    _clientReqLFQueue(clientRequestLFQueue),
+    _clientResponseLFQueue(clientResponseLFQueue),
     _isRunning(false), 
     _logger(logger) 
     {
@@ -39,7 +41,10 @@ exchange::MatchingEngine::MatchingEngine(exchange::MarketUpdateLFQueue *marketUp
  */
 exchange::MatchingEngine::~MatchingEngine() {
 
-    _matchingEngineThread.join();
+    _isRunning = false;
+
+    if(_matchingEngineThread.joinable())
+        _matchingEngineThread.join();
 
     #if DEBUG_MODE
     std::cout << "Destroyed ME instance" << std::endl;
@@ -96,4 +101,26 @@ void exchange::MatchingEngine::processMarketData() {
 
 }
 
-void exchange::MatchingEngine::sendClientResponse(const clientResponseTypeDef &response) { }
+/**
+ * @brief sends response to the client's request
+ */
+void exchange::MatchingEngine::sendClientResponse(const clientResponseTypeDef &response) { 
+
+    clientResponseTypeDef *slot = _clientResponseLFQueue -> getNextSlotToWrite();
+    (*slot) = response;
+
+    _clientResponseLFQueue -> updateWriteIndex();
+
+}
+
+/**
+ * @brief 
+ */
+void exchange::MatchingEngine::sendMarketUpdate(const marketDataTypeDef &marketUpdate) { 
+
+    marketDataTypeDef *slot = _marketUpdateLfQueue -> getNextSlotToWrite();
+    (*slot) = marketUpdate;
+
+    _marketUpdateLfQueue -> updateWriteIndex();
+
+}

@@ -1,3 +1,7 @@
+#pragma once
+
+#include <algorithm>
+
 #include "md_protocol.h"
 #include "matching_engine.h"
 #include "logger.h"
@@ -22,12 +26,9 @@ namespace exchange {
         // function that processes new order after client's request.
         // If the order fully matches with another order, these orders are removed.
         // Otherwise the remaining quantity is pushed to the order book
-        auto add(client_id clientId, 
-            order_id clientOrderId, 
-            ticker_id tickerId, 
-            side sideVal, 
-            price priceVal, 
-            quantity qty) noexcept -> void; 
+        auto add(client_id clientId, order_id clientOrderId, 
+            ticker_id tickerId, side sideVal, 
+            price priceVal, quantity qty) noexcept -> void; 
 
         // function
         auto cancel(client_id clientId, order_id orderId, ticker_id tickerID) noexcept -> void;
@@ -35,6 +36,10 @@ namespace exchange {
         // funtion that prints the current 
         // contents of the limit order book
         auto print() noexcept -> void;
+
+
+        // the response that is sent to the client
+        clientResponseTypeDef _meClientResponse;
 
     private:
 
@@ -57,11 +62,18 @@ namespace exchange {
         MEOrdersAtPrice *_bidsByPrice = nullptr;
         MEOrdersAtPrice *_asksByPrice = nullptr;
 
+        // hashmaps that store orders and price levels
+        OrderHashMap         ordersHashMap{};
+        OrdersAtPriceHashMap ordersAtPriceHashMap{};
+
+
         order_id _nextMarketOrderId = 1;
 
-        // keeps data for responding to client's
-        // requests
+        // keeps data for responding to client's requests
         clientResponseTypeDef _clientResponse;
+
+        // keeps data for multicast sending of the updates in order book
+        marketDataTypeDef _marketUpdate;
 
         /**
          * @brief returns the _nextMarketOrderId and increments it 
@@ -88,34 +100,147 @@ namespace exchange {
         } 
 
         /**
-         * @brief adds new price level to the MEOrdersAtPrice
+         * @brief adds new price level to the MEOrdersAtPrice. 
+         *        It should be called if the new order price level
+         *        is not present in the order book. It inserts the order 
+         *        to the MEOrdersAtPrice to keep it sorted (bids are sorted from highest to lowest,
+         *        asks are sorted from lowest to highest) 
          */
-        void addOrdersAtPrice(MEOrdersAtPrice *newOrderAtPrice) {
+        void addOrdersAtPrice(MEOrdersAtPrice *newOrderAtPrice) noexcept {
 
-            // do something
+            // register this level in the hash table of price-level 
+            ordersAtPriceHashMap.at(priceToIndex(newOrderAtPrice -> _priceVal)) = newOrderAtPrice;
+
+            // choosing what do we wrok with: bids or asks 
+            const auto bestOrdersByPrice = (newOrderAtPrice -> _sideVal == side::BUY ? _bidsByPrice : 
+                _asksByPrice);
+
+            // if the current side is empty, the newOrderAtPrice becomes first
+            if(UNLIKELY(!bestOrdersByPrice)) {
+
+                (newOrderAtPrice -> _sideVal == side::BUY ? _bidsByPrice : _asksByPrice) = newOrderAtPrice;
+
+                // only one element in the ring
+                newOrderAtPrice -> _nextEntry = newOrderAtPrice -> _prevEntry = newOrderAtPrice;
+
+            }
+
+            else {
+
+                // target is head of the bidsByPrice or asksByPrice
+                auto target = bestOrdersByPrice;
+
+                // if the new level is worse than target
+                // what is actually "worse"?
+                bool addAfter = 
+                (newOrderAtPrice ->_sideVal == side::SELL && newOrderAtPrice ->_priceVal > target -> _priceVal) || 
+                (newOrderAtPrice -> _sideVal == side::BUY && newOrderAtPrice -> _priceVal < target -> _priceVal);
+
+                if(addAfter) {
+
+                    target = target -> _nextEntry;
+
+                    addAfter = 
+                    (newOrderAtPrice ->_sideVal == side::SELL && newOrderAtPrice ->_priceVal > target -> _priceVal) || 
+                    (newOrderAtPrice -> _sideVal == side::BUY && newOrderAtPrice -> _priceVal < target -> _priceVal);
+
+                }
+
+                while(addAfter && target != bestOrdersByPrice) {
+
+                    addAfter = 
+                    (newOrderAtPrice ->_sideVal == side::SELL && newOrderAtPrice ->_priceVal > target -> _priceVal) || 
+                    (newOrderAtPrice -> _sideVal == side::BUY && newOrderAtPrice -> _priceVal < target -> _priceVal);
+
+                    if(addAfter)
+                        target = target -> _nextEntry;
+
+
+                }
+
+                // in case we are adding order after the target
+                if(addAfter) {
+
+                    if(target == bestOrdersByPrice) 
+                        target = bestOrdersByPrice -> _prevEntry;
+
+                    newOrderAtPrice -> _prevEntry = target;
+                    target -> _nextEntry -> _prevEntry = newOrderAtPrice;
+                    newOrderAtPrice -> _nextEntry = target -> _nextEntry;
+                    target -> _nextEntry = newOrderAtPrice; 
+
+                }
+
+                // in case we are adding order before the target
+                else {
+
+                    newOrderAtPrice -> _prevEntry = target -> _prevEntry;
+                    newOrderAtPrice -> _nextEntry = target;
+                    target -> _prevEntry -> _nextEntry = newOrderAtPrice;
+                    target -> _prevEntry = newOrderAtPrice;
+
+                    if((newOrderAtPrice ->_sideVal == side::SELL && newOrderAtPrice ->_priceVal < bestOrdersByPrice -> _priceVal) || 
+                    (newOrderAtPrice -> _sideVal == side::BUY && newOrderAtPrice -> _priceVal > bestOrdersByPrice -> _priceVal)) {
+
+                        // target -> _nextEntry = (target -> _nextEntry == bestOrdersByPrice ? newOrderAtPrice : target ->_nextEntry);
+                        (newOrderAtPrice -> _sideVal == side::BUY ? _bidsByPrice : _asksByPrice) = newOrderAtPrice;
+
+                    }
+
+                }
+
+            }
 
         }
 
         /**
-         * @brief
-         * @param
-         * @return
+         * @brief removes all orders at the level of priceVal and
+         *        the side of sideVal from the order book
          */
-        auto getOrdersAtPrice(price priceArg) -> MEOrdersAtPrice * {
+        void removeOrdersAtPrice(side sideVal, price priceVal) {
 
-            // return 
+            // choosing between buy orders and sell orders
+            const auto bestOrdersByPrice = (sideVal == side::BUY ? _bidsByPrice : _asksByPrice);
 
-        }
+            auto ordersAtPrice = getOrdersAtPrice(priceVal);
 
-        /**
-         * @brief
-         * @return 
-         */
-        auto checkForMatch(client_id clientId, order_id orderId, ticker_id tickerId, 
-            side sideVal, price priceVal, quantity q, order_id newOrderId) noexcept -> quantity  {
+            // checking if the current state (buy or sell)
+            // consists only of one price (so the ring is only made)
+            // of one element
+            if(UNLIKELY(ordersAtPrice -> _nextEntry == ordersAtPrice)) {
+
+                // after deleting the only level the head points to nullptr
+                (sideVal == side::BUY ? _bidsByPrice : _asksByPrice) = nullptr;
+
+            }
+
+            else {
+
+                // performing a deletion of the price level from the linked list
+                ordersAtPrice -> _prevEntry -> _nextEntry = ordersAtPrice -> _nextEntry;
+                ordersAtPrice -> _nextEntry -> _prevEntry = ordersAtPrice -> _prevEntry;
 
 
-                return 0;
+                // if the best level was deleted we should set the next one
+                // as a head of the current side
+                if(ordersAtPrice == bestOrdersByPrice) {
+
+                    (sideVal == side::BUY ? _bidsByPrice : _asksByPrice) = ordersAtPrice -> _nextEntry;
+
+                }
+
+                // deleting the connections of the level we are deleting
+                ordersAtPrice -> _nextEntry = ordersAtPrice -> _prevEntry = nullptr;
+
+            }
+
+            // making the entry in the hashtable empty
+            ordersAtPriceHashMap.at(priceToIndex(priceVal)) = nullptr;
+
+            // deallocating the price level from the pool
+            _ordersAtPricePool.deallocate(ordersAtPrice);
+
+
 
         }
 
@@ -125,8 +250,9 @@ namespace exchange {
          * @return reference to the MEOrdersAtPrice member
          *         which contains reference to the order list of demanded price
          */
-        MEOrdersAtPrice *getOrdersAtPriceLevel(price priceLevel) {
+        MEOrdersAtPrice *getOrdersAtPrice(price priceLevel) {
 
+            return ordersAtPriceHashMap.at(priceToIndex(priceLevel));
 
         }
 
@@ -169,13 +295,14 @@ namespace exchange {
                 order -> _nextOrder = order -> _prevOrder = order;
 
                 // allocating new slot in the pool 
-                MEOrdersAtPrice *newOrderAtPrice = _ordersAtPricePool.allocate(order -> _meOrderSide, 
+                MEOrdersAtPrice *newOrdersAtPrice = _ordersAtPricePool.allocate(order -> _meOrderSide, 
                                                                                order -> _price, 
-                                                                               order, 
                                                                                nullptr, 
                                                                                nullptr);
 
-                addOrdersAtPrice(newOrderAtPrice);
+                newOrdersAtPrice -> firstMeOrder = order;
+
+                addOrdersAtPrice(newOrdersAtPrice);
 
             }
 
@@ -196,6 +323,72 @@ namespace exchange {
             }
 
         }
+
+        /**
+         * @brief removes order from the book (from the certain price level)
+         */
+        void removeOrder(MEOrder *order) noexcept {
+
+            // getting linked list of orders on certain price level
+            auto ordersAtPrice = getOrdersAtPrice(order -> _price);
+
+            // if we have only one order in the linked list (one element in ring)
+            if (order -> _prevOrder == order) {
+
+                // removing the entire price level
+                removeOrdersAtPrice(order -> _meOrderSide, order -> _price);
+
+            }
+
+            // remove the order from the linked list 
+            else {
+
+                const auto prevOrder = order -> _prevOrder;
+                const auto nextOrder = order -> _nextOrder;
+
+                // severing the connections between removed order
+                // and its neighbors 
+                prevOrder -> _nextOrder = nextOrder;
+                nextOrder -> _prevOrder = prevOrder;
+
+                if (ordersAtPrice -> firstMeOrder == order)
+                    ordersAtPrice -> firstMeOrder = nextOrder;
+
+                order -> _prevOrder = order -> _nextOrder = nullptr;
+
+            }
+
+            // removing order from the hashmap
+            // (not implemented yet) !!!!!!!!!!!!!!!!!!!!!
+
+            // releasing the slot in the mempool
+            _ordersPool.deallocate(order);
+
+        }
+
+        /**
+         * @brief executes a deal between an incoming order and the order that is already in the book (passive order)
+         * @param tickerId
+         * @param clientId is the client that sent the aggressive order
+         * @param sideVal buy/sell
+         * @param clientOrderId id of the order on the client-side
+         * @param newMarketOrderId id of the order within the trading system (that will be unique
+         *                         exactly in the trading system)
+         * @param *matchingOrder is the pointer to the order that we match with. It is a head
+         *        of the FIFO sequence of a certain price level
+         * @param *leavesQty how many units left on the aggressive side after the match 
+         * 
+         */
+        void match(ticker_id tickerId, client_id clientId, side sideVal, order_id clientOrderId, 
+            order_id newMarketOrderId, MEOrder *matchingOrder, quantity *leavesQty) noexcept;
+
+        /**
+         * @brief checks if there is a cross between the aggressive order 
+         *        and a passive order. And checks if they match fully or partially
+         * @return 
+         */
+        quantity checkForMatch(client_id clientId, order_id orderId, ticker_id tickerId, 
+            side sideVal, price priceVal, quantity q, order_id newOrderId) noexcept;
 
     };
 

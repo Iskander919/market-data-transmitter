@@ -37,25 +37,48 @@ namespace exchange {
 
     enum class side : int8_t {
 
+        INVALID =  0,
+        BUY     =  1,
+        SELL    = -1
+
+    };
+
+    // ADD - we have a new order in the book
+    // MODIFY - the quantity of the order has been changed
+    // TRADE - is triggered after every match()
+    enum class MarketUpdateType : uint8_t {
+
         INVALID = 0,
-        BUY = 1,
-        SELL = -1
+        ADD     = 1,
+        MODIFY  = 2, 
+        CANCEL  = 3, 
+        TRADE   = 4
 
     };
 
     struct marketDataTypeDef {
 
+        MarketUpdateType marketUpdateType = MarketUpdateType::INVALID;
+
         order_id  orderId        = ORDER_ID_INVALID;
         ticker_id tickerId       = TICKER_ID_INVALID;
-        client_id clientId       = CLIENT_ID_INVALID;
         price     priceValue     = PRICE_INVALID;
         quantity  quant          = QUANTITY_INVALID;
         priority  priorityValue  = PRIORITY_INVALID;
         side      sideValue      = side::INVALID;
 
+        marketDataTypeDef() {}
+
+        marketDataTypeDef(MarketUpdateType _updateType, order_id _orderId, ticker_id _tickerId, price _priceVal,
+                          quantity _quant, priority _priorityValue, side _sideValue) :  
+
+                          marketUpdateType(_updateType), orderId(_orderId), tickerId(_tickerId),
+                          priceValue(_priceVal), quant(_quant), priorityValue(_priorityValue), sideValue(_sideValue)
+                          { }
+
     };
 
-    constexpr uint32_t marketDataStructSize = 43;
+    constexpr uint32_t marketDataStructSize = 40;
 
 }
 

@@ -249,7 +249,8 @@ public:
         // we should wait until the thread is
         // done executing before destroying the Logger
         // object
-        _logThread.join();
+        if(_logThread.joinable())
+            _logThread.join();
 
         file.close();
 

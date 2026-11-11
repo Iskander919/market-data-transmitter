@@ -43,6 +43,8 @@ namespace exchange {
 
         void sendClientResponse(const clientResponseTypeDef &response);
 
+        void sendMarketUpdate(const marketDataTypeDef &marketData);
+
     private:
 
         MarketUpdateLFQueue *_marketUpdateLfQueue;

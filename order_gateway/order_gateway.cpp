@@ -3,7 +3,7 @@
 exchange::clientResponseTypeDef::clientResponseTypeDef() :  
     clientId(CLIENT_ID_INVALID), tickerId(TICKER_ID_INVALID), marketOrderId(ORDER_ID_INVALID), 
     clientOrderId(ORDER_ID_INVALID), sideValue(side::INVALID), priceValue(PRICE_INVALID), 
-    qty(QUANTITY_INVALID), prty(PRIORITY_INVALID) { }
+    qty(QUANTITY_INVALID), leavesQty(QUANTITY_INVALID) { }
 
 std::string exchange::clientResponseTypeDef::toString() {
 

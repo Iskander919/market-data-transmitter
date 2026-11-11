@@ -28,7 +28,7 @@ namespace exchange {
             side _sideValue,
             price _priceValue,
             quantity _qty,
-            priority _prty) : 
+            quantity _leavesQty) : 
 
             responseStatus(_responseStatus),
             clientId(_clientId),
@@ -38,7 +38,7 @@ namespace exchange {
             sideValue(_sideValue),
             priceValue(_priceValue),
             qty(_qty),
-            prty(_prty) { }
+            leavesQty(_leavesQty) { }
 
         clientResponseTypeEnum responseStatus;
         client_id clientId;
@@ -48,7 +48,7 @@ namespace exchange {
         side      sideValue;
         price     priceValue;
         quantity  qty;
-        priority  prty;
+        quantity  leavesQty;
 
         std::string toString();
 

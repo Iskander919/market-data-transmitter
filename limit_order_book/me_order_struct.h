@@ -14,6 +14,8 @@ namespace exchange {
         order_id  _marketOrderID = ORDER_ID_INVALID;
         side _meOrderSide        = side::INVALID;
         priority _prio           = PRIORITY_INVALID;
+        price _price             = PRICE_INVALID;
+        quantity _qty            = QUANTITY_INVALID;
 
         // since MEOrder is a doubly linked list, we have 
         MEOrder *_nextOrder = nullptr;
@@ -28,14 +30,18 @@ namespace exchange {
             order_id clientOrderID, 
             order_id marketOrderID, 
             side meOrderSide, 
-            priority prio) : 
+            priority prio,
+            price priceVal, 
+            quantity qty) : 
 
             _tickerID(tickerId),
             _clientID(clientId),
             _clientOrderID(clientOrderID),
             _marketOrderID(marketOrderID),
             _meOrderSide(meOrderSide),
-            _prio(prio) { }
+            _prio(prio), 
+            _price(priceVal), 
+            _qty(qty) { }
 
     };
 
@@ -51,7 +57,8 @@ namespace exchange {
 
         MEOrder *firstMeOrder = nullptr;
 
-        MEOrdersAtPrice() = default;
+        MEOrdersAtPrice() : _sideVal(side::INVALID), _priceVal(PRICE_INVALID), _prevEntry(nullptr),
+        _nextEntry(nullptr) { }
 
         MEOrdersAtPrice(side sideVal, price priceVal, MEOrdersAtPrice *nextEntry, MEOrdersAtPrice *prevEntry) : 
         _sideVal(sideVal), 
@@ -63,5 +70,7 @@ namespace exchange {
         MEOrdersAtPrice *_prevEntry = nullptr;
 
     };
+
+    typedef std::array<MEOrdersAtPrice*, ME_MAX_PRICE_LEVELS> OrdersAtPriceHashMap;
 
 };

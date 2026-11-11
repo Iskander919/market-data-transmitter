@@ -12,6 +12,7 @@ add_executable(market_data_transmitter
     market_data_publisher/md_protocol.cpp
     matching_engine/matching_engine.cpp
     order_gateway/order_gateway.cpp
+    limit_order_book/limit_order_book.cpp
     )
 
 target_include_directories(market_data_transmitter PRIVATE 
@@ -22,5 +23,6 @@ lock_free_queue/
 matching_engine/
 market_data_publisher/
 order_gateway/
-mem_pool/)
+mem_pool/
+limit_order_book/)
 
