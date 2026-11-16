@@ -1,3 +1,5 @@
+#pragma once 
+
 #include <cstdint>
 #include <iostream>
 #include <vector>
@@ -37,6 +39,19 @@ public:
      */
     template <typename ... Args>
     T* allocate(Args && ... args) noexcept {
+
+        // checking the storage vector to have vacant slots
+        // if it doesn't, return nullptr
+        if(UNLIKELY(!_storageVector[_nextFreeIndex]._isFree)) {
+
+            updateNextFreeIndex();
+
+            if(!_storageVector[_nextFreeIndex]._isFree) {
+
+                return nullptr;
+
+            }
+        }
 
         // getting pointer to the next free slot in the object vector 
         // (pointer to the insatnce of the ObjecBlock)
@@ -141,9 +156,8 @@ private:
 
             }
 
-            if (UNLIKELY(_nextFreeIndex == initialFreeIndex)) {
+            if(UNLIKELY(_nextFreeIndex == initialFreeIndex)) {
 
-                std::cerr << "Memory Pool is out of space" << std::endl;
                 return;
 
             }

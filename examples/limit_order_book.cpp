@@ -3,6 +3,7 @@
 #include "matching_engine.h"
 #include <chrono>
 #include <thread>
+#include <memory>
 
 
 exchange::ClientReqLFQueue      clientReqLFQ(256);
@@ -19,7 +20,8 @@ int main() {
 
     exchange::ticker_id ticker = 1;
 
-    exchange::MEOrderBook book(ticker, &engine, &logger);
+    std::unique_ptr<exchange::MEOrderBook> bookPtr = 
+        std::make_unique<exchange::MEOrderBook>(ticker, &engine, &logger);
 
     return 0;
     

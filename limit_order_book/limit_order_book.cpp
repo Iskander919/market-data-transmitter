@@ -1,4 +1,5 @@
 #include "limit_order_book.h"
+#include "matching_engine.h"
 
 constexpr std::size_t MEMPOOL_BOOK_SIZE = 512;
 
@@ -18,6 +19,25 @@ namespace exchange {
     auto MEOrderBook::add(client_id clientId, order_id clientOrderId, ticker_id tickerId, 
             side sideVal, price priceVal, quantity qty) noexcept -> void {
 
+                // checking if there is no price collision (e. g. prices of 100 and 356 will collide)
+                const MEOrdersAtPrice *existingLevel = ordersAtPriceHashMap[priceToIndex(priceVal)];
+                
+                if(UNLIKELY(qty == 0 || qty == QUANTITY_INVALID || priceVal == PRICE_INVALID || 
+                    (sideVal != side::BUY && sideVal != side::SELL) || (tickerId != _bookTickerId)
+                    || (existingLevel && (existingLevel -> _priceVal != priceVal)))) {
+
+                    // reject the client's order
+                    _clientResponse = clientResponseTypeDef(clientResponseTypeEnum::REJECTED, 
+                        clientId, tickerId, ORDER_ID_INVALID, clientOrderId, sideVal, priceVal, 
+                        qty, QUANTITY_INVALID);
+
+                    _matchingEngine -> sendClientResponse(_clientResponse);
+
+                    return;
+
+                }
+
+                // generate 
                 const auto newOrderId = generateNewMarketOrderId();
 
                 // constructing response to client after "add" request
@@ -42,7 +62,28 @@ namespace exchange {
                     auto order = _ordersPool.allocate(tickerId, clientId, clientOrderId, newOrderId, 
                         sideVal, prio, priceVal, leavesQuantity);
 
-                    addOrder(order);
+                    // checking if we have successfully allocated the order (there is enough space in the Memory Pool)
+                    if(UNLIKELY(order == nullptr)) {
+
+                        // std::cerr << "MEORderBook::add() failed: memory pool is out of space" << std::endl;
+                        _logger -> log("MEORderBook::add() failed: memory pool of orders is out of space");
+
+                        // the quantity of 0 was executed
+                        _clientResponse = clientResponseTypeDef{clientResponseTypeEnum::CANCELED, clientId, 
+                            tickerId, newOrderId, clientOrderId, sideVal, priceVal, 0, leavesQuantity};
+
+                        _matchingEngine -> sendClientResponse(_clientResponse);
+
+                        return;
+
+                    }
+
+                    if (addOrder(order) == false) {
+
+                        _ordersPool.deallocate(order);
+                        return;
+
+                    }
 
                     _marketUpdate = marketDataTypeDef{MarketUpdateType::ADD, newOrderId, tickerId, priceVal, leavesQuantity, 
                     prio, sideVal};
@@ -56,17 +97,42 @@ namespace exchange {
     
     /**
     * @brief 
-    * @
     */
-   /*
-    auto MEOrderBook::cancel(client_id clientId, order_id orderId, ticker_id tickerId) noexcept -> void {
+    void MEOrderBook::cancel(client_id clientId, order_id orderId, ticker_id tickerId) noexcept {
 
-        // constructing response to the client
-        _clientResponse = clientResponseTypeDef{clientResponseTypeEnum::CANCELED}
+        // getting a pointer to the order from the hashmap
+        MEOrder *order = ordersHashMap.at(orderId % ME_MAX_ORDER_IDS);
 
+        const bool isCancelable = (order) && (order -> _marketOrderID == orderId) && 
+            (tickerId == _bookTickerId) && (order -> _clientID == clientId);
+
+        // preparing request and multicast update and removing the order
+        if(UNLIKELY(!isCancelable)) {
+
+            _clientResponse = clientResponseTypeDef{clientResponseTypeEnum::CANCEL_REJECTED, clientId, 
+                tickerId, orderId, ORDER_ID_INVALID, side::INVALID, PRICE_INVALID, QUANTITY_INVALID, 
+                QUANTITY_INVALID};
+
+        }
+
+        else {
+
+            _clientResponse = clientResponseTypeDef{clientResponseTypeEnum::CANCELED, clientId, 
+                tickerId, orderId, order -> _clientOrderID, order -> _meOrderSide, 
+                order -> _price, QUANTITY_INVALID, order -> _qty};
+
+            _marketUpdate = marketDataTypeDef{MarketUpdateType::CANCEL, orderId, tickerId, 
+                order -> _price, order -> _qty, order -> _prio, order -> _meOrderSide};
+
+            removeOrder(order);
+
+            _matchingEngine -> sendMarketUpdate(_marketUpdate);
+
+        }
+
+        _matchingEngine -> sendClientResponse(_clientResponse);
 
     }
-   */
 
   /**
     * @brief executes a single deal between an incoming order and the order that is already in the book (passive order)
@@ -95,15 +161,15 @@ namespace exchange {
         order -> _qty -= fillQty;
 
         // reply to the client (aggressor)
-        _meClientResponse = clientResponseTypeDef(clientResponseTypeEnum::FILLED, clientId, 
+        _clientResponse = clientResponseTypeDef(clientResponseTypeEnum::FILLED, clientId, 
                             tickerId, newMarketOrderId, clientOrderId, sideVal, order -> _price, fillQty, *leavesQty);
-        _matchingEngine -> sendClientResponse(_meClientResponse);
+        _matchingEngine -> sendClientResponse(_clientResponse);
 
         // reply to the owner of the passive order
-        _meClientResponse = clientResponseTypeDef(clientResponseTypeEnum::FILLED, order -> _clientID, 
+        _clientResponse = clientResponseTypeDef(clientResponseTypeEnum::FILLED, order -> _clientID, 
                             tickerId, order -> _marketOrderID, order -> _clientOrderID, order -> _meOrderSide, 
                             matchingOrder -> _price, fillQty, order -> _qty);
-        _matchingEngine -> sendClientResponse(_meClientResponse);
+        _matchingEngine -> sendClientResponse(_clientResponse);
 
         // sending multicast market update
 
@@ -186,5 +252,105 @@ namespace exchange {
 
                 return leavesQty;
             }
+
+    /**
+     * @brief prints current constents of the book (vibecoded)
+     */
+    auto MEOrderBook::print() noexcept -> void {
+
+        for(auto [head, name] : {std::pair{_asksByPrice, "ASKS"}, std::pair{_bidsByPrice, "BIDS"}}) {
+
+            std::cout << "---- " << name << " ----\n";
+            if(!head) continue;
+
+            auto level = head;
+            do {
+
+                std::cout << level -> _priceVal << " |";
+                auto order = level -> firstMeOrder;
+
+                do {
+                    std::cout << ' ' << order -> _qty << "(#" << order -> _marketOrderID << ')';
+                    order = order -> _nextOrder;
+                } while(order != level -> firstMeOrder);
+
+                std::cout << '\n';
+                level = level -> _nextEntry;
+
+            } while(level != head);
+        }
+    }
+
+    /**
+    * @brief adds order to the list of orders
+    *        at the certain price level
+    * @param &order is the refernce to the order instance we want to insert 
+    *        to the book
+    */
+    bool MEOrderBook::addOrder(MEOrder *order) {
+
+        // getting orders at price at the desired 
+        // price level
+        const auto ordersAtPrice = getOrdersAtPrice(order -> _price);
+
+        // the order is the first at its price level 
+        if(!ordersAtPrice) {
+
+            order -> _nextOrder = order -> _prevOrder = order;
+
+            // allocating new slot in the pool 
+            MEOrdersAtPrice *newOrdersAtPrice = _ordersAtPricePool.allocate(order -> _meOrderSide, 
+                                                                           order -> _price, 
+                                                                           nullptr, 
+                                                                           nullptr);
+
+            if(newOrdersAtPrice == nullptr) {
+
+                _logger -> log("MEOrderBook::addOrder: got nullptr after allocate()");
+            
+                _clientResponse = clientResponseTypeDef(clientResponseTypeEnum::CANCELED, order -> _clientID, 
+                    order -> _tickerID, ORDER_ID_INVALID, order ->_clientOrderID, order -> _meOrderSide, 
+                    order -> _price, order -> _qty, PRICE_INVALID);
+
+                _matchingEngine -> sendClientResponse(_clientResponse);
+
+                return false;
+
+            }
+
+            newOrdersAtPrice -> firstMeOrder = order;
+
+            // register order at the hashmap
+            ordersHashMap.at(order -> _marketOrderID % ME_MAX_ORDER_IDS) = order;
+
+
+            addOrdersAtPrice(newOrdersAtPrice);
+
+            return true;
+
+        }
+
+        // the order price level is already present in the order book
+        else {
+
+            auto firstOrder = ordersAtPrice -> firstMeOrder;
+
+            firstOrder -> _prevOrder -> _nextOrder = order;
+
+            order -> _prevOrder = firstOrder -> _prevOrder;
+
+            order -> _nextOrder = firstOrder;
+
+            firstOrder -> _prevOrder = order;
+
+            // register order at the hashmap
+            ordersHashMap.at(order -> _marketOrderID % ME_MAX_ORDER_IDS) = order;
+
+            return true;
+
+
+        }
+
+    }
 
 }

@@ -1,14 +1,16 @@
 #pragma once
 
 #include <algorithm>
-
+#include <array>
 #include "md_protocol.h"
-#include "matching_engine.h"
 #include "logger.h"
 #include "mem_pool.h"
 #include "me_order_struct.h"
+#include "order_gateway.h"
 
 namespace exchange {
+
+    class MatchingEngine;
 
     class MEOrderBook {
     public:
@@ -37,11 +39,13 @@ namespace exchange {
         // contents of the limit order book
         auto print() noexcept -> void;
 
-
-        // the response that is sent to the client
-        clientResponseTypeDef _meClientResponse;
-
     private:
+
+        // keeps data for responding to client's requests
+        clientResponseTypeDef _clientResponse;
+
+        // keeps data for multicast sending of the updates in order book
+        marketDataTypeDef _marketUpdate;
 
         Logger *_logger;
 
@@ -68,12 +72,6 @@ namespace exchange {
 
 
         order_id _nextMarketOrderId = 1;
-
-        // keeps data for responding to client's requests
-        clientResponseTypeDef _clientResponse;
-
-        // keeps data for multicast sending of the updates in order book
-        marketDataTypeDef _marketUpdate;
 
         /**
          * @brief returns the _nextMarketOrderId and increments it 
@@ -278,51 +276,12 @@ namespace exchange {
         }
 
         /**
-         * @brief adds order to the list of orders
-         *        at the certain price level
-         * @param &order is the refernce to the order instance we want to insert 
-         *        to the book
-         */
-        void addOrder(MEOrder *order) {
-
-            // getting orders at price at the desired 
-            // price level
-            const auto ordersAtPrice = getOrdersAtPrice(order -> _price);
-
-            // the order is the first at its price level 
-            if(!ordersAtPrice) {
-
-                order -> _nextOrder = order -> _prevOrder = order;
-
-                // allocating new slot in the pool 
-                MEOrdersAtPrice *newOrdersAtPrice = _ordersAtPricePool.allocate(order -> _meOrderSide, 
-                                                                               order -> _price, 
-                                                                               nullptr, 
-                                                                               nullptr);
-
-                newOrdersAtPrice -> firstMeOrder = order;
-
-                addOrdersAtPrice(newOrdersAtPrice);
-
-            }
-
-            // the order price level is already present in the order book
-            else {
-
-                auto firstOrder = ordersAtPrice -> firstMeOrder;
-
-                firstOrder -> _prevOrder -> _nextOrder = order;
-
-                order -> _prevOrder = firstOrder -> _prevOrder;
-
-                order -> _nextOrder = firstOrder;
-
-                firstOrder -> _prevOrder = order;
-
-
-            }
-
-        }
+        * @brief adds order to the list of orders
+        *        at the certain price level
+        * @param &order is the refernce to the order instance we want to insert 
+        *        to the book
+        */
+        bool addOrder(MEOrder *order);
 
         /**
          * @brief removes order from the book (from the certain price level)
@@ -359,7 +318,7 @@ namespace exchange {
             }
 
             // removing order from the hashmap
-            // (not implemented yet) !!!!!!!!!!!!!!!!!!!!!
+            ordersHashMap.at(order -> _marketOrderID % ME_MAX_ORDER_IDS) = nullptr;
 
             // releasing the slot in the mempool
             _ordersPool.deallocate(order);

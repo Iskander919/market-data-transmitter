@@ -1,3 +1,5 @@
+#pragma once
+
 #include "md_protocol.h"
 
 namespace exchange {
@@ -8,7 +10,16 @@ namespace exchange {
         ACCEPTED        = 1,
         CANCELED        = 2,
         FILLED          = 3,
-        CANCEL_REJECTED = 4
+        CANCEL_REJECTED = 4,
+        REJECTED        = 5
+
+    };
+
+    enum class clientRequestTypeEnum : uint8_t {
+
+        INVALID  = 0,
+        NEW      = 1,
+        CANCEL   = 2
 
     };
 
@@ -61,6 +72,7 @@ namespace exchange {
 
         explicit clientRequestTypeDef();
 
+        clientRequestTypeEnum requestType;
         client_id clientId;
         ticker_id tickerId;
         order_id  orderId;

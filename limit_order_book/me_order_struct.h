@@ -1,3 +1,5 @@
+#pragma once
+
 #include <array>
 #include "md_protocol.h"
 

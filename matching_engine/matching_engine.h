@@ -12,8 +12,12 @@
 
 #define DEBUG_MODE 1
 
+// defining maximum numbers of ticker that can exist in the trading system
+constexpr size_t ME_MAX_TICKERS = 8;
 
 namespace exchange {
+
+    class MEOrderBook;
 
     // data that comes to market data publisher
     typedef LockFreeQueue<exchange::marketDataTypeDef> MarketUpdateLFQueue;
@@ -45,6 +49,10 @@ namespace exchange {
 
         void sendMarketUpdate(const marketDataTypeDef &marketData);
 
+        void processClientRequest(const clientRequestTypeDef &request) noexcept;
+
+        void run() noexcept;
+
     private:
 
         MarketUpdateLFQueue *_marketUpdateLfQueue;
@@ -57,12 +65,10 @@ namespace exchange {
 
         std::thread _matchingEngineThread;
 
-        void processMarketData();
-
-        void processClientRequests();
-
         // pointer to the Logger insatnce
         Logger *_logger;
+
+        std::array<MEOrderBook*, ME_MAX_TICKERS> orderBookArray;
 
     };
 
