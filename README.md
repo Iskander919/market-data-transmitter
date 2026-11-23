@@ -31,6 +31,9 @@ is represented by the following table:
 # To do:
 1 Limit Order Book\
 2 Order Gateway Server: TCP connection manager\
+2.1 TCP messages serializer and deserializer\
+2.2 epoll server
+2.3 Bind it all with matching engine via LF queues
 3 TLS\
 4 Connect it all together\
 5 Tests

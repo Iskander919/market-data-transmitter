@@ -22,7 +22,10 @@ std::string makeLogFileName() {
 
 template <typename Queue>
 auto drainQueue(Queue& queue) {
+
+    // removing const and volatile 
     using Value = std::remove_cv_t<
+        // removing references 
         std::remove_reference_t<decltype(*queue.getNextSlotToRead())>>;
 
     std::vector<Value> result;

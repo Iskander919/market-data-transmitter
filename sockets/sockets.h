@@ -30,7 +30,7 @@ public:
         bool isListening,
         int ttl,
         bool needsTimestamp,
-        Logger &logger) -> int;
+        Logger *logger) -> int;
 
     // this function converts network interfaces 
     // represented in string form 

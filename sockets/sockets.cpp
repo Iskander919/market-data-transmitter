@@ -146,14 +146,14 @@ int Sockets::createSocket(const std::string &tIp,
     bool isListening,
     int ttl,
     bool needsTimestamp,
-    Logger &logger) {
+    Logger *logger) {
 
     std::string timeStr;
 
     // getting IP-address as a string
     const auto ip = tIp.empty() ? getInterfaceIp(interface) : tIp;
 
-    logger.log("createSocket\n");
+    logger -> log("Sockets::createSocket:createSocket\n");
 
     addrinfo hints{};
 
