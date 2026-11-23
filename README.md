@@ -37,4 +37,5 @@ is represented by the following table:
 3 TLS\
 4 Connect it all together\
 5 Tests
+6 Implement DPDK UDP market updater
 

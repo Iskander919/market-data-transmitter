@@ -2,11 +2,14 @@
 
 #include "md_protocol.h"
 
+#include <array>
+#include <atomic>
 #include <cerrno>
 #include <cstdio>
 #include <sys/epoll.h>
-#include <unistd.h>
 #include "sockets.h"
+#include <unistd.h>
+#include <unordered_map>
 
 namespace exchange {
 
@@ -100,6 +103,16 @@ namespace exchange {
         static constexpr size_t CLIENT_REQUEST_SIZE  = 0;
 
         /**
+         * @brief sets _run as true and starts the _orderGatewayThread
+         */
+        void startOrderGatewayThread();
+
+        /**
+         * @brief sets _run flag as false  
+         */
+        void stopGatewayThread();
+
+        /**
          * @brief gets client's request represented as byte flow and converts it to the clientRequestTypeDef
          */
      
@@ -120,6 +133,12 @@ namespace exchange {
          */
         int epollConfigure(int socketFileDesc);
 
+        /**
+         * @brief cyclically checks for incoming connections, accepts them, 
+         *        pushes requests to the queue and extracts responses from the queue
+         */
+        void runGateway();
+
     private:
 
         Sockets sockets;
@@ -129,11 +148,31 @@ namespace exchange {
         int _port; // port for createSocket
         int _ttl; // ttl for createSocket
 
+        // event instance for epoll
+        epoll_event _event{};
+
         // file descriptors of the listening socket and epoll
         int _socketFd = -1;
         int _epollFd  = -1;
 
+        // utils for the order gateway thread 
+        std::atomic<bool> _run = false;
+        std::thread _orderGatewayThread;
+
         Logger *_logger;
+
+        // struct that stores info about client's connection
+        struct Connection { };
+
+        // maps for storing connections 
+        // and matching between client_ids and file descriptors
+        std::unordered_map<int, Connection> _connectionsMap = {};
+        std::unordered_map<client_id, int> _clientIdToFd = {}; 
+
+        static const uint32_t MAX_EVENTS    = 64;
+        static const uint32_t EPOLL_TIMEOUT = 10;
+
+        std::array<epoll_event, MAX_EVENTS> eventsArr = {};
 
     };
 

@@ -66,11 +66,14 @@ namespace exchange {
 
         }
 
-        epoll_event event{};
+        // we set EPOLLIN since we make a listening socket and we 
+        // ready to accept the incoming connection
+        _event.events  = EPOLLIN;
+        _event.data.fd = socketFileDesc;
 
         // register socketFileDesc in epoll 
         // we pass the EPOLL_CTL_ADD flag cause' we add new FD to the epoll
-        int registerStatus = epoll_ctl(epollFd, EPOLL_CTL_ADD, socketFileDesc, &event);
+        int registerStatus = epoll_ctl(epollFd, EPOLL_CTL_ADD, socketFileDesc, &_event);
 
         if(registerStatus < 0) {
 
@@ -84,6 +87,87 @@ namespace exchange {
         }
 
         return epollFd;
+
+    }
+
+    /**
+     * @brief cyclically checks for incoming connections, accepts them, 
+     *     pushes requests to the queue and extracts responses from the queue
+     */
+    void OrderGateway::runGateway() {
+
+        if(_epollFd < 0) {
+
+            std::cerr << "OrderGateway::runGateway:_epollFd < 0. Aborting application" << std::endl;
+            _run = false;
+            std::abort();
+
+        }
+
+        else if(_socketFd < 0) {
+
+            std::cerr << "OrderGateway::runGateway:_socketFd < 0. Aborting application" << std::endl;
+            _run = false;
+            std::abort();
+
+        }
+
+        while(_run) {
+
+            // getting number of file descriptors that have data to read
+            int readyFds = epoll_wait(_epollFd, eventsArr.data(), MAX_EVENTS, EPOLL_TIMEOUT);
+
+            if(readyFds == 0)
+                continue;
+
+            else if (readyFds <  0) {
+
+                // got an interrupt
+                if(errno == EINTR)
+                    continue;
+
+                std::cerr << "OrderGateway::runGateway: epoll_wait returned -1. Aboritng" << std::endl;
+                _run = false;
+                std::abort();
+
+            }
+
+            // processing all available descriptors
+            for(int i = 0; i < readyFds; ++i) {
+
+                const int fd = eventsArr[i].data.fd;
+                const uint32_t mask = eventsArr[i].events;
+
+                if(fd == _socketFd) { 
+
+                    // if we get a error with epoll or
+                    // connection failure we stop the order gateway
+                    if(mask & (EPOLLERR | EPOLLHUP)) {
+
+
+                    }
+
+                    if(mask & EPOLLIN) {
+
+                        // acceptConections();
+
+                    }
+
+                    continue;
+
+
+                }
+
+                // handleClientEvents();
+
+            }
+
+            if(!_run)
+                break;
+
+            // drainCLientResponses();
+ 
+        }
 
     }
 
