@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cerrno>
 #include <cstdio>
+#include <cstring>
 #include <sys/epoll.h>
 #include "sockets.h"
 #include <unistd.h>
@@ -161,8 +162,18 @@ namespace exchange {
 
         Logger *_logger;
 
+        static const size_t RECV_VECT_SIZE = 64;
+        static const size_t SEND_VECT_SIZE = 64;
+
         // struct that stores info about client's connection
-        struct Connection { };
+        struct Connection { 
+
+            int fd = -1;
+            std::vector<uint8_t> sendBuf;
+            std::vector<uint8_t> receivedBuf;
+            int sentBytes = 0;
+
+        };
 
         // maps for storing connections 
         // and matching between client_ids and file descriptors
@@ -172,7 +183,27 @@ namespace exchange {
         static const uint32_t MAX_EVENTS    = 64;
         static const uint32_t EPOLL_TIMEOUT = 10;
 
+        // array of epoll_event structs (that contain .event
+        // and .data)
         std::array<epoll_event, MAX_EVENTS> eventsArr = {};
+
+        /**
+         * @brief registers new connections in the epoll. 
+         *        Returns file descriptor of the accepted connection, in case 
+         *        of fault returns -1
+         */
+        int acceptConnections();
+        
+        /**
+         * @brief gets mask and file descriptor of the socket, 
+         *        reads data or writes data to the socket
+         */
+        void handleClientEvents(int fd, uint32_t mask);
+
+        void closeConnection(int fd);
+
+        bool receiveClientRequests(int fd);
+        bool sendClientResponses(int fd);
 
     };
 
